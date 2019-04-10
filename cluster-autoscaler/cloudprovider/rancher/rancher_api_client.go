@@ -35,6 +35,7 @@ func NewRancherNodePoolAPIClient(cfg *Config) *rancherNodePoolAPIClient{
 type NodePoolAPIClient interface {
 	UpdateNodePoolCapacity(nodePoolName string, size int64) (resp *http.Response, err error)
 	GetNodePool(nodePoolName string) (result *RancherNodePool, err error)
+	GetNodeByName(nodeName string) (result *RancherNode, err error)
 }
 
 func (nc *rancherNodePoolAPIClient) GetNodePool(nodePoolName string) (result *RancherNodePool, err error){
@@ -106,6 +107,7 @@ func NewRancherNodeAPIClient(cfg *Config) *rancherNodeAPIClient{
 // NodeAPIClient defines needed functions for the rancher node api.
 type NodeAPIClient interface {
 	DeleteNode(nodeName string) (resp *http.Response, err error)
+	CordonNode(nodeName string) (err error)
 	ListNodes(nodePoolName string) (result []*RancherNode, err error)
 }
 
@@ -116,6 +118,10 @@ func (nc *rancherNodeAPIClient) DeleteNode(nodeName string) (err error){
 		return err
 	}
 
+	err = nc.CordonNode(nodeName)
+	if err != nil {
+		return err
+	}
 	// Build URL
 	url := fmt.Sprintf("%s%s%s", nc.client.RancherURI, nc.resource, node.ID)
 
@@ -134,6 +140,34 @@ func (nc *rancherNodeAPIClient) DeleteNode(nodeName string) (err error){
 
 	return nil
 }
+
+
+func (nc *rancherNodeAPIClient) CordonNode(nodeName string) (err error){
+	node, err := nc.GetNodeByName(nodeName)
+	if err != nil {
+		return err
+	}
+
+	// Build URL
+	url := fmt.Sprintf("%s%s%s?action=cordon", nc.client.RancherURI, nc.resource, node.ID)
+
+	// Build the request
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request: %s", err)
+	}
+	req.Header.Add("Authorization","Basic " + base64.StdEncoding.EncodeToString([]byte(nc.client.RancherToken)))
+	client := &http.Client{}
+
+	_, err = client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending request: %s", err)
+	}
+
+	return nil
+}
+
+
 
 func (nc *rancherNodeAPIClient) ListNodes(nodePoolName string) (result []*RancherNode, err error){
 	// Build URL

@@ -159,16 +159,36 @@ func (m *RancherManager) GetNodePoolNodes(nodePool *NodePool) ([]string, error) 
 
 // DeleteInstances deletes the given instances. All instances must be controlled by the same NodePool.
 func (m *RancherManager) DeleteInstances(instances []*RancherRef) error {
+	// Need Node pool
+	// need number of instance in node pool
+
 	if len(instances) == 0 {
 		return nil
 	}
-
-	for _, instance := range instances {
-		err := m.service.nodeClient.Delete(instance.Name)
-		if err != nil {
-			return err
-		}
+	// Nodes should all be in the same node pool
+	nodepool, err := m.GetNodePoolForInstance(instances[0])
+	if err != nil {
+		return err
 	}
+	nodes, err := nodepool.Nodes()
+	if err != nil {
+		return err
+	}
+	for _, instance := range instances {
+		m.service.nodeClient.Cordon(instance.Name)
+	}
+	err = m.service.nodePoolClient.SetDesiredCapacity(nodepool.Id(), int64(len(nodes) - len(instances)))
+	if err != nil {
+		return err
+	}
+
+  //
+  //	for _, instance := range instances {
+  //		err := m.service.nodeClient.Delete(instance.Name)
+  //		if err != nil {
+  //			return err
+  //		}
+  //	}
 
 	return nil
 }

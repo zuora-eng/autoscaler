@@ -25,6 +25,7 @@ func NewRancherNodeClient(cfg *Config) *rancherNodeClient{
 type NodeClient interface {
 	Delete(nodeName string) (err error)
 	List(nodePoolName string) (result []*RancherNode, err error)
+	Cordon(nodeName string) (err error)
 }
 
 func (nc *rancherNodeClient) Delete(nodeName string) (err error){
@@ -42,6 +43,15 @@ func (nc *rancherNodeClient) List(nodePoolName string) (result []*RancherNode, e
 	}
 	return result, nil
 }
+
+func (nc *rancherNodeClient) Cordon(nodeName string) (err error){
+	err = nc.client.CordonNode(nodeName)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 
 type rancherNodePoolClient struct {
 	client    rancherNodePoolAPIClient
